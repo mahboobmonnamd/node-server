@@ -10,7 +10,9 @@
     "format:check": "prettier --check \"**/*.{json,css,scss,md,html,ts}\"",
     "format": "prettier --write \"**/*.{json,css,scss,md,html,ts}\"",
     "build": "tsc",
-    "build:watch": "tsc -w"
+    "build:watch": "tsc -w",
+    "dev": "nodemon build/index.js",
+    "dev:ts": "nodemon --exec ts-node src/index.ts"
   },
   "keywords": [],
   "author": "Mahboob",
