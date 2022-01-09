@@ -10,7 +10,24 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { SubscriptionServer } from 'subscriptions-transport-ws';
 import { execute, subscribe } from 'graphql';
 import coreSchema from './core.schema';
+import { IPubSub, PubSubInstance } from './pubsub';
 
+export interface GraphServerOptions {
+  typeDefs: any[];
+  resolvers: any[];
+  dataSources?: any;
+  context?: any[];
+  pubSubConfig?: IPubSub;
+  subscriptions?: {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    onConnect?: Function;
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    onDisconnect?: Function;
+  };
+  serverOpts: {
+    port: number;
+  };
+}
 export class ApolloGraphqlServer {
   private constructor() {}
 
@@ -27,19 +44,24 @@ export class ApolloGraphqlServer {
           },
         },
         ApolloServerPluginDrainHttpServer({ httpServer: plug[1] }),
-        ApolloServerPluginLandingPageGraphQLPlayground({ endpoint: '/playground' }),
-        ApolloServerPluginLandingPageDisabled(),
+        process.env.NODE_ENV === 'production'
+          ? ApolloServerPluginLandingPageDisabled()
+          : ApolloServerPluginLandingPageGraphQLPlayground({ endpoint: '/playground' }),
       ],
     ];
   }
 
-  static async startApolloServer(
+  static async startApolloServer({
     typeDefs,
     resolvers,
     dataSources,
     context,
-    { port, isDev = false },
-  ) {
+    pubSubConfig = { type: 0 },
+    subscriptions = {},
+    serverOpts,
+  }: GraphServerOptions) {
+    const { port } = serverOpts;
+    const { onConnect = null, onDisconnect = null } = subscriptions;
     const app = express();
     const httpServer = createServer(app);
 
@@ -50,10 +72,8 @@ export class ApolloGraphqlServer {
         schema,
         execute,
         subscribe,
-        onConnect() {
-          //   make it as function
-          return '';
-        },
+        ...(onConnect && { onConnect }),
+        ...(onDisconnect && { onDisconnect }),
       },
       {
         server: httpServer,
@@ -67,7 +87,7 @@ export class ApolloGraphqlServer {
       ...(context && { context }),
       ...(dataSources && { dataSources }),
     });
-
+    PubSubInstance.setPubsub(pubSubConfig);
     await server.start();
     server.applyMiddleware({ app });
     await new Promise<void>((resolve) => httpServer.listen({ port }, resolve));
