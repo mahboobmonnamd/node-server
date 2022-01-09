@@ -10,6 +10,7 @@ import express, {
 } from 'express';
 import { ServerOpts } from './server.interface';
 import { ExpressRoutes } from './expressRoutes.interface';
+import { frameguard, hsts } from 'helmet';
 import compression from 'compression';
 import cors from 'cors';
 
@@ -101,8 +102,11 @@ class ExpressServer implements ExpressHttpServerMethods {
 
   addPlugins(serverOpts: ServerOpts) {
     this.expressInstance.use(compression({ filter: this.shouldCompress }));
-    this.expressInstance.use(json());
+    this.expressInstance.use(json({ limit: '2mb' }));
     this.expressInstance.use(urlencoded({ extended: true }));
+    this.expressInstance.use(frameguard({ action: 'DENY' }));
+    this.expressInstance.use(hsts({ maxAge: 5184000, includeSubDomains: false }));
+
     const { plugins } = serverOpts;
     if (plugins && plugins.corsOptions) this.expressInstance.use(cors({ origin: '*' }));
   }
@@ -125,7 +129,7 @@ class ExpressServer implements ExpressHttpServerMethods {
   }
 
   /**
-   * Initalize all routes
+   * Initialize all routes
    * Routes will be passed as the class objects to the arguments
    * @param CONTROLLERS  Pass the routes as object
    */
@@ -138,8 +142,8 @@ class ExpressServer implements ExpressHttpServerMethods {
         try {
           if (typeof controller == 'object') {
             /**
-             * Every controller routesDefintion will take the input of ExpressHttpServerMethods
-             * Passing the class object to provide the defintion of the route
+             * Every controller routesDefinition will take the input of ExpressHttpServerMethods
+             * Passing the class object to provide the definition of the route
              */
             controller.routesDefinition(this);
           }
