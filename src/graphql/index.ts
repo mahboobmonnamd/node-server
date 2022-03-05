@@ -65,6 +65,10 @@ export class ApolloGraphqlServer {
     const app = express();
     const httpServer = createServer(app);
 
+    app.use('/health_check', (req, res) => {
+      res.status(200).end();
+    });
+
     const schema = makeExecutableSchema({ typeDefs: [coreSchema, ...typeDefs], resolvers });
 
     const subscriptionServer = SubscriptionServer.create(
